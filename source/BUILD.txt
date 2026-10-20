@@ -1,0 +1,41 @@
+补丁构建说明
+
+构建工具：Windows PowerShell 5.1、.NET Framework 4.8、Mono.Cecil 0.11.6
+生成差分使用 Python 3 标准库；提取内嵌 DLL 时可以使用 dnfile 0.18.0
+
+目录结构：补齐以下构建输入
+work/
+  source/BuildPatch.ps1
+  source/RestoreDownload.cs
+  source/VerifyPatch.ps1
+  source/MakeDelta.py
+  source/Mono.Cecil.dll
+  source/previous/Plain Craft Launcher 2.exe
+  source/release/Plain Craft Launcher 2.exe
+  source/release/*.dll
+
+Mono.Cecil 官方 NuGet 包
+https://api.nuget.org/v3-flatcontainer/mono.cecil/0.11.6/mono.cecil.0.11.6.nupkg
+使用包中的 lib/net40/Mono.Cecil.dll
+
+目标原版：从下面提交的 最新正式版.zip 提取 EXE
+https://github.com/Meloong-Git/PCL/tree/6b9a50df911c9d68b69b24c979efba477fb14b67
+SHA256 6b6e1260cb5a1d6a303855f1c60cab3d0bc1aebba7e40a964180188b271e7386
+
+参考实现：从限制提交 e4b0489 的父提交 5ef81e4 中提取 最新正式版.zip 的 EXE
+https://github.com/Meloong-Git/PCL/tree/5ef81e4
+SHA256 5582952ded3b443503f66c23b810802bd20f1a3e847b54d9e09653a825859a36
+
+将原版 EXE 的 PCL.Resources.resources 中的内嵌托管 DLL 提取到 release/
+包括 PCLCS、MeloongCore、MeloongCore.Wpf、Newtonsoft.Json 等
+使用 .NET ResourceReader 时资源值已经是 DLL 原始字节
+使用 dnfile.resource.ResourceSet 的条目原始 data 时，先跳过四字节长度字段
+
+在 work/ 执行
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File source/BuildPatch.ps1
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File source/VerifyPatch.ps1
+python source/MakeDelta.py
+
+输出根目录的 PCL-Download-Restored.exe 和 download.patch.gz
+差分重新生成后，应核对其 SHA256 是否仍与 Patch-PCL.ps1 中的 deltaHash 一致
+VerifyPatch.ps1 会核对仅五个原方法发生 IL 变化，资源不变，并对相关方法执行 JIT 校验
